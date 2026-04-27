@@ -240,26 +240,34 @@ class AttendanceService:
             "server_time": now.isoformat()
         }
 
-    def get_remaining(self, user_id: str):
-        data = self.get_attendance(user_id)
+    def get_today_attendance(self):
+        db = SessionLocal()
 
-        total = data["total_seconds"]
+        today = datetime.now(JAKARTA_TIMEZONE).date().isoformat()
+        now = datetime.now(JAKARTA_TIMEZONE)
 
-        if data["active_start"]:
-            now = datetime.now(JAKARTA_TIMEZONE)
-            active_start = datetime.fromisoformat(data["active_start"])
+        rows = db.query(Attendance).filter_by(date=today).all()
 
-            total += int((now - active_start).total_seconds())
+        items = []
+        for att in rows:
+            total_seconds = att.total_seconds
 
-        remaining = WORK_SECONDS - total
-        if remaining < 0:
-            remaining = 0
+            if att.status == "PRESENT" and att.active_start:
+                total_seconds += int((now - att.active_start).total_seconds())
+
+            items.append({
+                "user_id": att.user_id,
+                "total_seconds": total_seconds,
+                "status": att.status,
+                "clock_in_at": att.clock_in_at.isoformat() if att.clock_in_at else None,
+                "clock_out_confirmed_at": att.clock_out_confirmed_at.isoformat() if att.clock_out_confirmed_at else None,
+            })
+
+        db.close()
 
         return {
-            "user_id": user_id,
-            "remaining_seconds": remaining,
-            "clock_in_at": data["clock_in_at"],
-            "clock_out_pending_at": data["clock_out_pending_at"],
-            "clock_out_confirmed_at": data["clock_out_confirmed_at"],
-            "server_time": data["server_time"]
+            "date": today,
+            "count": len(items),
+            "items": items,
+            "server_time": now.isoformat(),
         }

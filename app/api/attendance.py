@@ -20,10 +20,15 @@ def update_presence(req: UpdatePresenceRequest):
     service.update_presence(req.user_id, req.detected)
     return {"status": "OK"}
 
+
+@router.get("/attendance")
+def get_today_attendance():
+    return service.get_today_attendance()
+
 @router.get("/attendance/{user_id}")
 def get_attendance(user_id: str):
-    remaining = service.get_remaining(user_id)
-    return remaining
+    attendance = service.get_attendance(user_id)
+    return attendance
 
 
 @router.post("/attendance/{user_id}/clockout/confirm")
