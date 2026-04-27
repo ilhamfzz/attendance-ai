@@ -28,7 +28,7 @@ def dashboard():
                 <tr>
                     <th>User ID</th>
                     <th>Status</th>
-                    <th>Total Seconds</th>
+                    <th>Workhour</th>
                     <th>Clock In</th>
                     <th>Clock Out Confirmed</th>
                     <th>Detail</th>
@@ -55,6 +55,29 @@ def dashboard():
                 const d = new Date(value);
                 if (Number.isNaN(d.getTime())) return value;
                 return d.toLocaleString();
+            }
+
+            function formatWorkHour(seconds) {
+                const totalSec = Math.floor(seconds);
+                const hours = Math.floor(totalSec / 3600);
+                const minutes = Math.floor((totalSec % 3600) / 60);
+                
+                if (hours === 0) return `${minutes} Menit`;
+                if (minutes === 0) return `${hours} Jam`;
+                return `${hours} Jam ${minutes} Menit`;
+            }
+
+            function formatClockInTime(value) {
+                if (!value) return "-";
+                const d = new Date(value);
+                if (Number.isNaN(d.getTime())) return value;
+                
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+                const displayHours = d.getHours() % 12 || 12;
+                
+                return `${String(displayHours).padStart(2, '0')}:${minutes} ${ampm}`;
             }
 
             async function fetchAttendance() {
@@ -88,8 +111,8 @@ def dashboard():
                         <tr>
                             <td>${userId}</td>
                             <td class="${statusClass}">${esc(status)}</td>
-                            <td>${totalSeconds}</td>
-                            <td>${esc(formatDate(item.clock_in_at))}</td>
+                            <td>${formatWorkHour(totalSeconds)}</td>
+                            <td>${esc(formatClockInTime(item.clock_in_at))}</td>
                             <td>${esc(formatDate(item.clock_out_confirmed_at))}</td>
                             <td><a href="/${encodeURIComponent(item.user_id)}">View</a></td>
                         </tr>
