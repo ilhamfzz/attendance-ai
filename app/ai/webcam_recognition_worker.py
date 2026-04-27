@@ -1,3 +1,6 @@
+import os
+import sys
+from pathlib import Path
 import cv2
 import face_recognition
 import pickle
@@ -5,8 +8,17 @@ import requests
 import time
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.core.env import ensure_env_loaded
+
+ensure_env_loaded()
+
 API_URL = "http://127.0.0.1:8000/presence/update"
 DB_PATH = "app/ai/face_db/encodings.pkl"
+worker_token = (os.getenv("WORKER_JWT_TOKEN") or "").strip()
 
 # ===== CONFIG =====
 PROCESS_EVERY_N_FRAMES = 5
@@ -24,12 +36,26 @@ with open(DB_PATH, "rb") as f:
 known_ids = []
 known_encodings = []
 
-for emp_id, enc_list in known_faces.items():
+for usr_id, enc_list in known_faces.items():
     for enc in enc_list:
-        known_ids.append(emp_id)
+        known_ids.append(usr_id)
         known_encodings.append(enc)
 
-cap = cv2.VideoCapture(1)
+def open_webcam_capture(device_index: int = 1):
+    cap_local = cv2.VideoCapture(device_index)
+    if cap_local.isOpened():
+        return cap_local
+    cap_local.release()
+    return None
+
+
+cap = open_webcam_capture(1)
+while cap is None:
+    print("Webcam tidak bisa dibuka. Retry 3 detik...")
+    time.sleep(3)
+    cap = open_webcam_capture(1)
+
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 frame_count = 0
 last_seen_time = time.time()
@@ -41,6 +67,8 @@ current_state = False  # presence state
 while True:
     ret, frame = cap.read()
     if not ret:
+        print("Frame error, retry...")
+        time.sleep(0.1)
         continue
 
     frame_count += 1
@@ -71,7 +99,8 @@ while True:
 
         try:
             encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-        except:
+        except Exception as e:
+            print("Encoding error:", e)
             continue
 
         for encoding in encodings:
@@ -81,24 +110,24 @@ while True:
             candidate_scores = {}
 
             for idx in best_indices:
-                emp_id = known_ids[idx]
+                usr_id = known_ids[idx]
                 dist = distances[idx]
 
-                if emp_id not in candidate_scores:
-                    candidate_scores[emp_id] = []
+                if usr_id not in candidate_scores:
+                    candidate_scores[usr_id] = []
 
-                candidate_scores[emp_id].append(dist)
+                candidate_scores[usr_id].append(dist)
 
             # hitung rata-rata per user
             best_user = None
             best_score = 1.0
 
-            for emp_id, scores in candidate_scores.items():
+            for usr_id, scores in candidate_scores.items():
                 avg_score = np.mean(scores)
 
                 if avg_score < best_score:
                     best_score = avg_score
-                    best_user = emp_id
+                    best_user = usr_id
 
             # threshold
             if best_score < 0.5:
@@ -116,13 +145,15 @@ while True:
         if presence_state != current_state:
             try:
                 requests.post(API_URL, json={
-                    "employee_id": current_user,
+                    "user_id": current_user,
                     "detected": presence_state
-                })
+                }, headers={
+                    "Authorization": f"Bearer {worker_token}"
+                } if worker_token else None)
                 print(f"[SEND] {current_user} → {presence_state}")
                 current_state = presence_state
-            except:
-                print("API error")
+            except Exception as e:
+                print("API error:", e)
 
     # ===== VISUAL =====
     status_text = f"{current_user if current_user else 'UNKNOWN'} - {'PRESENT' if presence_state else 'AWAY'}"

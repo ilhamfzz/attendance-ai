@@ -7,7 +7,7 @@ DB_PATH = "app/ai/face_db/encodings.pkl"
 MAX_SAMPLES = 10
 FRAME_SIZE = (640, 480)
 
-def register_multi_sample(employee_id: str):
+def register_multi_sample(user_id: str):
     cap = cv2.VideoCapture(1)
 
     print("📸 Ambil beberapa pose wajah (kiri, kanan, depan)")
@@ -73,14 +73,14 @@ def register_multi_sample(employee_id: str):
     else:
         db = {}
 
-    db[employee_id] = samples
+    db[user_id] = samples
 
     with open(DB_PATH, "wb") as f:
         pickle.dump(db, f)
 
-    print(f"🔥 {employee_id} berhasil disimpan dengan {len(samples)} sample")
+    print(f"🔥 {user_id} berhasil disimpan dengan {len(samples)} sample")
 
 
 if __name__ == "__main__":
-    emp_id = input("Masukkan Employee ID: ")
-    register_multi_sample(emp_id)
+    usr_id = input("Masukkan User ID: ")
+    register_multi_sample(usr_id)

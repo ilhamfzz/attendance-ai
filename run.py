@@ -18,4 +18,8 @@ if __name__ == "__main__":
         uvicorn.run("app.main:app", reload=True)
     finally:
         print("Stopping worker...")
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        try:
+            if process.poll() is None:
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass

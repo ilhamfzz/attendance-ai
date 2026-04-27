@@ -4,7 +4,7 @@ import os
 
 DB_PATH = "app/ai/face_db/encodings.pkl"
 
-def register(image_path, employee_id):
+def register(image_path, user_id):
     image = face_recognition.load_image_file(image_path)
     encodings = face_recognition.face_encodings(image)
 
@@ -21,12 +21,12 @@ def register(image_path, employee_id):
     else:
         db = {}
 
-    db[employee_id] = encoding
+    db[user_id] = encoding
 
     with open(DB_PATH, "wb") as f:
         pickle.dump(db, f)
 
-    print(f"{employee_id} berhasil didaftarkan")
+    print(f"{user_id} berhasil didaftarkan")
 
 
 # contoh pakai

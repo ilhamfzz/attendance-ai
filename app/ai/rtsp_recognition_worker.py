@@ -52,14 +52,26 @@ unique_ids = list(known_faces.keys())
 # ===== CAMERA =====
 print(f"Using RTSP_URL: {rtsp_url}")
 
-cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
-if not cap.isOpened():
-    print("FFMPEG backend gagal, fallback ke backend default OpenCV...")
-    cap.release()
-    cap = cv2.VideoCapture(rtsp_url)
+def open_rtsp_capture(url: str):
+    cap_local = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+    if cap_local.isOpened():
+        return cap_local
 
-if not cap.isOpened():
-    raise RuntimeError(f"Tidak bisa membuka stream RTSP: {rtsp_url}")
+    print("FFMPEG backend gagal, fallback ke backend default OpenCV...")
+    cap_local.release()
+    cap_local = cv2.VideoCapture(url)
+    if cap_local.isOpened():
+        return cap_local
+
+    cap_local.release()
+    return None
+
+
+cap = open_rtsp_capture(rtsp_url)
+while cap is None:
+    print(f"Tidak bisa membuka stream RTSP: {rtsp_url}. Retry 3 detik...")
+    time.sleep(3)
+    cap = open_rtsp_capture(rtsp_url)
 
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
@@ -175,7 +187,7 @@ while True:
         if smooth_detected != prev_state and (now - last_sent_time[emp_id] > COOLDOWN):
             try:
                 requests.post(API_URL, json={
-                    "employee_id": emp_id,
+                    "user_id": emp_id,
                     "detected": smooth_detected
                 })
 

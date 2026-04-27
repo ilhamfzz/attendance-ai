@@ -17,7 +17,7 @@ def dashboard():
 
         <script>
             const params = new URLSearchParams(window.location.search);
-            const employeeId = params.get("employee_id") || "EMP001";
+            const userId = params.get("user_id") || "EMP001";
 
             let baseTotal = 0;
             let activeStart = null;
@@ -34,7 +34,7 @@ def dashboard():
 
             // ===== INITIAL LOAD =====
             async function fetchInitial() {
-                const res = await fetch(`/attendance/${employeeId}`);
+                const res = await fetch(`/attendance/${userId}`);
                 const data = await res.json();
 
                 applyState(data);
@@ -56,7 +56,7 @@ def dashboard():
                 isPresent = data.status === "PRESENT";
 
                 document.getElementById("meta").innerText =
-                    `Employee: ${employeeId} | Status: ${data.status}`;
+                    `User: ${userId} | Status: ${data.status}`;
             }
 
             // ===== REALTIME COUNTDOWN =====
@@ -87,7 +87,7 @@ def dashboard():
                 ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
 
-                    if (data.employee_id === employeeId) {
+                    if (data.user_id === userId) {
                         console.log("Realtime update:", data);
 
                         // 🔥 langsung apply state dari backend
